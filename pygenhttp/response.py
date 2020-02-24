@@ -26,6 +26,6 @@ class Response:
     def JSON(cls, obj, status=200, headers=None):
         return cls(
             status,
-            {'Content-Type': 'application/javascript', **(headers or {})},
+            {'Content-Type': 'application/json', **(headers or {})},
             json.dumps(obj).encode(),
         )

@@ -20,8 +20,10 @@ class Connection:
         Loop.ACTIVE.enqueue(self._loop())
 
     def _loop(self):
-        while not self._closing:
+        while not (self._closing):
             yield
+            if Loop.ACTIVE.closing:
+                Loop.ACTIVE.enqueue(self.close())
             try:
                 self._recv_buffer += self._sock.recv(self.chunk_size)
             except BlockingIOError:
@@ -106,10 +108,11 @@ def listen_tcp(host: str, port: int, connect_cb) -> None:
     when recieving connection with connection object.
     '''
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         sock.settimeout(0)
         sock.bind((host, port))
         sock.listen()
-        while True:
+        while not Loop.ACTIVE.closing:
             yield
             try:
                 csock, _ = sock.accept()

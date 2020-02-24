@@ -2,8 +2,9 @@
 Provides Loop, an object used to run generators concurrently.
 '''
 from typing import Union, Generator, Iterable, Callable
-import time
 from numbers import Number
+import signal
+import time
 
 def sleep(seconds: Number) -> None:
     '''Wait for seconds.'''
@@ -32,12 +33,23 @@ class Loop:
 
     def __init__(self):
         self.queue = []
+        self.closing = False
+
+    def close(self):
+        if self.closing:
+            self.queue = None
+            print('\rForce quitting...')
+        else:
+            self.closing = True
+            print('\rExiting...')
 
     def start(self) -> None:
         '''Runs the loop until there is nothing left in the queue.'''
         if Loop.ACTIVE is not None:
             raise RuntimeError('A loop is already running.')
         Loop.ACTIVE = self
+        signal.signal(signal.SIGINT, lambda *_: self.close())
+        signal.signal(signal.SIGTERM, lambda *_: self.close())
         while self.queue:
             for idx, gen in reversed(tuple(enumerate(self.queue))):
                 try:

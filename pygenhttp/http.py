@@ -10,7 +10,9 @@ from . import __version__
 
 STATUS_CODES = {
     200: 'OK',
+    400: 'Bad Request',
     404: 'Not Found',
+    408: 'Request Timeout',
 }
 
 def parse_from_conn(

@@ -11,7 +11,7 @@ class Connection:
     '''
     Socket wrapper for use in Loop
     '''
-    def __init__(self, sock: socket.socket, chunk_size=2**18, timeout=5):
+    def __init__(self, sock: socket.socket, chunk_size=2**18, timeout=10):
         sock.settimeout(0)
         self._sock = sock
         self.chunk_size = chunk_size

@@ -5,31 +5,45 @@ from typing import Generator
 from collections import deque
 import socket
 from .loop import Loop, schedule
+import time
 
 class Connection:
     '''
     Socket wrapper for use in Loop
     '''
-    def __init__(self, sock: socket.socket, chunk_size=2**18):
+    def __init__(self, sock: socket.socket, chunk_size=2**18, timeout=5):
         sock.settimeout(0)
         self._sock = sock
         self.chunk_size = chunk_size
         self._recv_buffer = b''
         self._send_buffer = deque()
         self._closing = False
+        self.timeout = timeout
+        self._timeout_time = time.time() + timeout
         Loop.ACTIVE.enqueue(self._loop())
 
+    def check_timeout(self):
+        if time.time() > self._timeout_time:
+            raise TimeoutError
+
     def _loop(self):
-        while not (self._closing):
-            yield
-            if Loop.ACTIVE.closing:
-                Loop.ACTIVE.enqueue(self.close())
-            try:
-                self._recv_buffer += self._sock.recv(self.chunk_size)
-            except BlockingIOError:
-                pass
-            if self._send_buffer:
-                self._sock.send(self._send_buffer.popleft())
+        try:
+            while (not self._closing) or self._send_buffer:
+                self.check_timeout()
+                yield
+                if Loop.ACTIVE.closing:
+                    self.close()
+                try:
+                    self._recv_buffer += self._sock.recv(self.chunk_size)
+                    self._prev_action = time.time() + self.timeout
+                except BlockingIOError:
+                    pass
+                if self._send_buffer:
+                    self._sock.send(self._send_buffer.popleft())
+                    self._prev_action = time.time() + self.timeout
+        except TimeoutError:
+            pass
+        self._sock.close()
 
     def read_all(self) -> bytes:
         '''Read the entire buffer.'''
@@ -48,6 +62,7 @@ class Connection:
                      max_byte_count: int) -> Generator[None, None, bytes]:
         '''Get bytes from the buffer.'''
         while len(self._recv_buffer) < min_byte_count:
+            self.check_timeout()
             yield
         chunk = self._recv_buffer[:max_byte_count]
         self._recv_buffer = self._recv_buffer[max_byte_count:]
@@ -66,6 +81,7 @@ class Connection:
         '''Yield byte chunks until byte_count bytes have been yielded.'''
         idx = 0
         while idx < byte_count:
+            self.check_timeout()
             chunk = self.read_up_to(byte_count-idx)
             yield chunk
             idx += len(chunk)
@@ -74,6 +90,7 @@ class Connection:
         '''Read from the buffer until a delimiter.
         Resulting bytes do not contain the delimiter.'''
         while delimiter not in self._recv_buffer:
+            self.check_timeout()
             yield
         chunk, self._recv_buffer = self._recv_buffer.split(delimiter, 1)
         return chunk
@@ -91,11 +108,6 @@ class Connection:
     def close(self):
         '''Close connection gracefully.'''
         self._closing = True
-        yield
-        self._sock.close()
-
-    def __del__(self):
-        tuple(self.close())
 
     def __str__(self):
         phost, pport = self._sock.getpeername()

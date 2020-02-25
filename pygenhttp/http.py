@@ -34,22 +34,29 @@ def parse_from_conn(
     return headers, None
 
 def respond_to_conn(connection: Connection, status: int, headers: Dict[str, str], content: bytes) -> None:
+    yield
     resp_str = f'HTTP/1.1 {status} {STATUS_CODES.get(status)}'
     headers = {
         'Date': date.today(),
         'Server': f'pygenhttp/{__version__} ({platform.platform()})',
-        'Content-Length': len(content),
         'Content-Type': 'text/plain',
         'Connection': 'close',
         **headers
     }
+    if content is not None:
+        headers['Content-Length'] = len(content)
     header_str = '\r\n'.join(f'{name}: {value}' for name, value in headers.items())
     resp = b'\r\n'.join((
         resp_str.encode(),
         header_str.encode(),
         b'',
-        content,
-        b'',
     ))
-    print(resp.decode())
-    connection.send(resp)
+    connection.send(
+        resp if content is None else b'\r\n'.join((
+            resp,
+            content,
+            b'',
+        ))
+    )
+    if headers['Connection'] == 'close':
+        connection.close()

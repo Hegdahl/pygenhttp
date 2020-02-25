@@ -15,7 +15,26 @@ class Response:
         return iter((self.status, self.headers, self.body))
 
     @classmethod
+    def Bytes(cls, data, status=200, headers=None):
+        yield
+        return cls(
+            status,
+            {'Content-Type': 'application/octet-stream', **(headers or {})},
+            data,
+        )
+
+    @classmethod
+    def Text(cls, text, status=200, headers=None):
+        yield
+        return cls(
+            status,
+            {'Content-Type': 'text/plain', **(headers or {})},
+            text.encode(),
+        )
+
+    @classmethod
     def HTML(cls, doc, status=200, headers=None):
+        yield
         return cls(
             status,
             {'Content-Type': 'text/html', **(headers or {})},
@@ -24,8 +43,18 @@ class Response:
 
     @classmethod
     def JSON(cls, obj, status=200, headers=None):
+        yield
         return cls(
             status,
             {'Content-Type': 'application/json', **(headers or {})},
             json.dumps(obj).encode(),
+        )
+
+    @classmethod
+    def Redirect(cls, path, status=307, headers=None):
+        yield
+        return cls(
+            status,
+            {'Location': path},
+            b'',
         )

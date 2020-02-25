@@ -51,7 +51,6 @@ class Loop:
         signal.signal(signal.SIGINT, lambda *_: self.close())
         signal.signal(signal.SIGTERM, lambda *_: self.close())
         while self.queue:
-            print(len(self.queue))
             for idx, gen in reversed(tuple(enumerate(self.queue))):
                 try:
                     next(gen)

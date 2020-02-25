@@ -1,7 +1,7 @@
 '''
 Provides Loop, an object used to run generators concurrently.
 '''
-from typing import Union, Generator, Iterable, Callable
+from typing import Union, Generator, Callable
 from numbers import Number
 import signal
 import time
@@ -35,7 +35,9 @@ class Loop:
         self.queue = []
         self.closing = False
 
-    def close(self):
+    def close(self) -> None:
+        '''Notify processes that they should try to exit,
+        if close() was already called, force quit.'''
         if self.closing:
             self.queue = None
             print('\rForce quitting...')

@@ -1,7 +1,10 @@
+'''
+Test routing system
+'''
 from pygenhttp import Server
 from pygenhttp.response import Response
 
-server = Server()
+server = Server() # pylint: disable=invalid-name
 
 @server.route('')
 def index(*_):
@@ -19,7 +22,7 @@ def index(*_):
     '''))
 
 @server.route(r'regex_test/(?P<path_match>\w*)')
-def regex_test(headers, _, path_match):
+def regex_test(*_, path_match=None):
     return (yield from Response.HTML(f'''
         <!DOCTYPE html>
         <html>
